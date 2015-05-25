@@ -1,0 +1,29 @@
+{
+    "appKeys": {},
+    "capabilities": [
+        ""
+    ],
+    "companyName": "Keyue Bao",
+    "longName": "Tutorial Watchface",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "file": "fonts/perfect-dos-vga.ttf",
+                "name": "FONT_PERFECT_DOS_48",
+                "type": "font"
+            }
+        ]
+    },
+    "sdkVersion": "3",
+    "shortName": "Tutorial Watchface",
+    "targetPlatforms": [
+        "aplite",
+        "basalt"
+    ],
+    "uuid": "16b6e19c-c14f-4314-acfa-e6f0ae2c7456",
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": true
+    }
+}
