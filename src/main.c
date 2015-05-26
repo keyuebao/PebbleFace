@@ -7,8 +7,12 @@ static Window *s_main_window;
 /* First text element added to our Window */
 static TextLayer *s_time_layer;
 
+/* New text layer needed to display current weather condition/temperatures */
+static TextLayer *s_weather_layer;
+
 /* Declare our custom uploaded font from the Resources */
 static GFont s_time_font;
+static GFont s_weather_font;
 
 /* Declare two more points, each for bit map and bit map layer */
 static BitmapLayer *s_background_layer;
@@ -56,6 +60,13 @@ static void main_window_load (Window *window) {
   text_layer_set_text_color(s_time_layer, GColorBlack);
   text_layer_set_text(s_time_layer, "00:00");
   
+  /* Create temperature layer */
+  s_weather_layer = text_layer_create(GRect(0, 130, 144, 25));
+  text_layer_set_background_color(s_weather_layer, GColorClear);
+  text_layer_set_text_color(s_weather_layer, GColorWhite);
+  text_layer_set_text_alignment(s_weather_layer, GTextAlignmentCenter);
+  text_layer_set_text(s_weather_layer, "Loading...");
+  
   /* Create and apply the custom font to TextLayer */
   s_time_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_PERFECT_DOS_48));
   text_layer_set_font(s_time_layer, s_time_font);
@@ -64,6 +75,11 @@ static void main_window_load (Window *window) {
   /* Add it as a child layer to the Window's root layer */
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_time_layer));
 
+  /* Create second custom font, apply it and add to Window */
+  s_weather_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_PERFECT_DOS_20));
+  text_layer_set_font(s_weather_layer, s_weather_font);
+  layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_weather_layer));
+  
   /* Make sure the time is displayed from the beginning */
   update_time();
 }
@@ -78,6 +94,8 @@ static void main_window_unload (Window *window) {
   
   /* Destroy TextLayer to keep management within loading/unloading of Window */
   text_layer_destroy(s_time_layer);
+  text_layer_destroy(s_weather_layer);
+  fonts_unload_custom_font(s_weather_font);
 } 
 
 /* Helper functions to organize creation/destruction of all Pebble SDK elements */
