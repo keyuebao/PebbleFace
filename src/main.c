@@ -44,25 +44,6 @@ static void update_time() {
   text_layer_set_text(s_time_layer, buffer);
 }
 
-/* Used to access current time by subscribing a function to run whenever time changes */
-static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
-  update_time();
-  
-  /* Get weather update every 30 minutes */
-  /* THOUGHT: wow this is a pretty awesome way to handle frequent updates */
-  if (tick_time->tm_min % 30 == 0) {
-    /* Begin dictionary */
-    DictionaryIterator *iter;
-    app_message_outbox_begin(&iter);
-    
-    /* Add a key-value pair */
-    dict_write_unit8(iter, 0, 0);
-    
-    /* Send the message! */
-    app_message_outbox_send();
-  }
-}
-
 /* Handler functions to manage Window's sub-elements */
 static void main_window_load (Window *window) {
   /* Create GBitmap, then set to created BitmapLayer and add it as a child of main Window */
@@ -77,6 +58,16 @@ static void main_window_load (Window *window) {
   text_layer_set_text_color(s_time_layer, GColorBlack);
   text_layer_set_text(s_time_layer, "00:00");
   
+  /* Create GFont */
+  s_time_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_PERFECT_DOS_48));
+  
+  /* Apply to TextLayer */
+  text_layer_set_font(s_time_layer, s_time_font);
+  text_layer_set_text_alignment(s_time_layer, GTextAlignmentCenter);
+  
+  /* Add it as child layer to Window's root layer */
+  layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_time_layer));
+  
   /* Create temperature layer */
   s_weather_layer = text_layer_create(GRect(0, 130, 144, 25));
   text_layer_set_background_color(s_weather_layer, GColorClear);
@@ -84,14 +75,6 @@ static void main_window_load (Window *window) {
   text_layer_set_text_alignment(s_weather_layer, GTextAlignmentCenter);
   text_layer_set_text(s_weather_layer, "Loading...");
   
-  /* Create and apply the custom font to TextLayer */
-  s_time_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_PERFECT_DOS_48));
-  text_layer_set_font(s_time_layer, s_time_font);
-  text_layer_set_text_alignment(s_time_layer, GTextAlignmentCenter);
-  
-  /* Add it as a child layer to the Window's root layer */
-  layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_time_layer));
-
   /* Create second custom font, apply it and add to Window */
   s_weather_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_PERFECT_DOS_20));
   text_layer_set_font(s_weather_layer, s_weather_font);
@@ -114,6 +97,25 @@ static void main_window_unload (Window *window) {
   text_layer_destroy(s_weather_layer);
   fonts_unload_custom_font(s_weather_font);
 } 
+
+/* Used to access current time by subscribing a function to run whenever time changes */
+static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  update_time();
+  
+  /* Get weather update every 30 minutes */
+  /* THOUGHT: wow this is a pretty awesome way to handle frequent updates */
+  if (tick_time->tm_min % 30 == 0) {
+    /* Begin dictionary */
+    DictionaryIterator *iter;
+    app_message_outbox_begin(&iter);
+    
+    /* Add a key-value pair */
+    dict_write_uint8(iter, 0, 0);
+    
+    /* Send the message! */
+    app_message_outbox_send();
+  }
+}
 
 /* Place callback before they are referred to is a good practice */
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
@@ -141,13 +143,13 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
         break;
     }
     
-    /* Assemble the complete string and instruct TextLayer to display it */
-    snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s, %s", temperature_buffer, conditions_buffer);
-    text_layer_set_text(s_weather_layer, weather_layer_buffer);
-    
     /* Look for next item */
     t = dict_read_next(iterator);
   }
+  
+    /* Assemble the complete string and instruct TextLayer to display it */
+    snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s, %s", temperature_buffer, conditions_buffer);
+    text_layer_set_text(s_weather_layer, weather_layer_buffer);
 }
 
 /* Three additional callbacks for all possible outcomes or errors that may occur */
@@ -163,16 +165,6 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
 
 /* Helper functions to organize creation/destruction of all Pebble SDK elements */
 static void init () {
-  /* Register callbacks with the system */
-  app_message_register_inbox_received(inbox_received_callback);
-  app_message_register_inbox_dropped(inbox_dropped_callback);
-  app_message_register_outbox_failed(outbox_failed_callback);
-  app_message_register_outbox_sent(outbox_sent_callback);
-  
-  /* Open AppMessage to allow watchface to receive incoming messages */
-  /* LEARNT: Register callbacks before opening AppMessage to ensure no messages are missed */
-  app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
-  
   /* Create main Window element and assign to pointer */
   s_main_window = window_create(); 
   
@@ -187,6 +179,16 @@ static void init () {
   
   /* Register with TickTimerService */
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler); 
+  
+  /* Register callbacks with the system */
+  app_message_register_inbox_received(inbox_received_callback);
+  app_message_register_inbox_dropped(inbox_dropped_callback);
+  app_message_register_outbox_failed(outbox_failed_callback);
+  app_message_register_outbox_sent(outbox_sent_callback);
+  
+  /* Open AppMessage to allow watchface to receive incoming messages */
+  /* LEARNT: Register callbacks before opening AppMessage to ensure no messages are missed */
+  app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
 }
 
 static void deinit () {
