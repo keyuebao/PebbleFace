@@ -9,35 +9,11 @@ var xhrRequest = function(url, type, callback) {
   xhr.send();
 };
 
-// Assmeble dictionary using keys from main.c file
-var dictionary = {
-  'KEY_TEMPERATURE': temperature,
-  'KEY_CONDITIONS': conditions
-}
-
-// Send data to Pebble watch
-Pebble.sendAppMessage(dictionary,
-  function(e) {
-    console.log('Weather info sent to Pebble successfully!');
-  },
-  function(e) {
-    console.log('Error sending weather info to Pebble!');
-  }
-);
-
-// Listen for when an AppMessage is received for updates later
-Pebble.addEventListener('appmessage',
-  function(e) {
-    console.log('AppMessage received!');
-    getWeather();
-  }
-);
-
 // Use as callbacks for success/failure after requesting user location
 function locationSuccess(pos) {
   // Construct URL from API
   var url = 'http://api.openweathermap.org/data/2.5/weather?lat=' +
-  pos.coords.latitude + '&lon=' + pos.coords.longitude;
+      pos.coords.latitude + '&lon=' + pos.coords.longitude;
   
   // Send request to API
   xhrRequest(url, 'GET',
@@ -55,9 +31,26 @@ function locationSuccess(pos) {
       // Conditions
       var conditions = json.weather[0].main;
       console.log('Conditions are ' + conditions);
+      
+      // Assmeble dictionary using keys from main.c file
+      var dictionary = {
+        'KEY_TEMPERATURE': temperature,
+        'KEY_CONDITIONS': conditions
+      };
+
+      // Send data to Pebble watch
+      Pebble.sendAppMessage(dictionary,
+        function(e) {
+          console.log('Weather info sent to Pebble successfully!');
+        },
+        function(e) {
+          console.log('Error sending weather info to Pebble!');
+        }
+      );
     }
   );
 }
+
 function locationError(err) {
   console.log('Error requesting location!');
 }
@@ -80,7 +73,7 @@ Pebble.addEventListener('ready',
   }
 );
 
-// Listen for when AppMessage is sent from the watch to the phone
+// Listen for when AppMessage is sent, used for updates later
 Pebble.addEventListener('appmessage',
   function(e) {
     console.log('AppMessage received!');

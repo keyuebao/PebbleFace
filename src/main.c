@@ -47,6 +47,20 @@ static void update_time() {
 /* Used to access current time by subscribing a function to run whenever time changes */
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   update_time();
+  
+  /* Get weather update every 30 minutes */
+  /* THOUGHT: wow this is a pretty awesome way to handle frequent updates */
+  if (tick_time->tm_min % 30 == 0) {
+    /* Begin dictionary */
+    DictionaryIterator *iter;
+    app_message_outbox_begin(&iter);
+    
+    /* Add a key-value pair */
+    dict_write_unit8(iter, 0, 0);
+    
+    /* Send the message! */
+    app_message_outbox_send();
+  }
 }
 
 /* Handler functions to manage Window's sub-elements */
