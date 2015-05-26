@@ -1,5 +1,8 @@
 #include <pebble.h>
 
+#define KEY_TEMPERATURE 0
+#define KEY_CONDITIONS 1
+  
 /* Allows display of a new screen that slides into watch view */
 /* LEARNT: compilation failed because variable below wasn't in global scope */
 static Window *s_main_window;  
@@ -98,8 +101,64 @@ static void main_window_unload (Window *window) {
   fonts_unload_custom_font(s_weather_font);
 } 
 
+/* Place callback before they are referred to is a good practice */
+static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
+  /* Store incoming information into buffers, generous with size to prevent overruns */
+  /* THOUGHT: is there a better/safer way than hypothesizing the buffer size? */
+  static char temperature_buffer[8];
+  static char conditions_buffer[32];
+  static char weather_layer_buffer[32];
+  
+  /* Read first item */
+  Tuple *t = dict_read_first(iterator);
+  
+  /* For all items */
+  while( t != NULL ) {
+    /* See which key ws received */
+    switch(t->key) {
+      case KEY_TEMPERATURE:
+        snprintf(temperature_buffer, sizeof(temperature_buffer), "%dC", (int)t->value->int32);
+        break;
+      case KEY_CONDITIONS:
+        snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", t->value->cstring);
+        break;
+      default:
+        APP_LOG(APP_LOG_LEVEL_ERROR, "Key %d not recognized!", (int)t->key);
+        break;
+    }
+    
+    /* Assemble the complete string and instruct TextLayer to display it */
+    snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s, %s", temperature_buffer, conditions_buffer);
+    text_layer_set_text(s_weather_layer, weather_layer_buffer);
+    
+    /* Look for next item */
+    t = dict_read_next(iterator);
+  }
+}
+
+/* Three additional callbacks for all possible outcomes or errors that may occur */
+static void inbox_dropped_callback(AppMessageResult reason, void *context) {
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Message dropped!");
+}
+static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResult reason, void*context) {
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Outbox send failed!");
+}
+static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
+  APP_LOG(APP_LOG_LEVEL_INFO, "Outbox send success!");
+}
+
 /* Helper functions to organize creation/destruction of all Pebble SDK elements */
 static void init () {
+  /* Register callbacks with the system */
+  app_message_register_inbox_received(inbox_received_callback);
+  app_message_register_inbox_dropped(inbox_dropped_callback);
+  app_message_register_outbox_failed(outbox_failed_callback);
+  app_message_register_outbox_sent(outbox_sent_callback);
+  
+  /* Open AppMessage to allow watchface to receive incoming messages */
+  /* LEARNT: Register callbacks before opening AppMessage to ensure no messages are missed */
+  app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+  
   /* Create main Window element and assign to pointer */
   s_main_window = window_create(); 
   
